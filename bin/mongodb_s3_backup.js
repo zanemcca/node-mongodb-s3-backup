@@ -19,7 +19,8 @@ cli
   .setUsage(cli.app + ' [OPTIONS] <path to json config>');
 
 options = cli.parse({
-  now:   ['n', 'Run sync on start']
+  now:   ['n', 'Run sync on start'],
+  restore: ['r', 'Run restore on start']
 });
 
 if(cli.args.length !== 1) {
@@ -64,4 +65,14 @@ if(options.now) {
     backup.sync(config.mongodb, config.s3);
   }, null, true, timezone);
   backup.log('MongoDB S3 Backup Successfully scheduled (' + crontab + ')');
+
+  if (options.restore) {
+    backup.restore(config.mongodb, config.s3, function(err) {
+      if(err) {
+        process.exit(1)
+      } else {
+        backup.log('MongoDB S3 Restore Successfully completed');
+      }
+    })
+  }
 }
