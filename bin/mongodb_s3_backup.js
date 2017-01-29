@@ -5,6 +5,7 @@
 var cli = require('cli')
   , path = require('path')
   , util = require('util')
+  , async = require('async')
   , backup = require('../')
   , cronJob = require('cron').CronJob
   , pkg = require('../package.json')
@@ -33,15 +34,45 @@ configPath = path.resolve(process.cwd(), cli.args[0]);
 backup.log('Loading config file (' + configPath + ')');
 config = require(configPath);
 
-if(options.now) {
-  backup.sync(config.mongodb, config.s3, function(err) {
-    if(config.numOfArchives > 0) {
-      backup.clean(config.s3, config.mongodb.db, config.numOfArchives, function(err) {
-        process.exit(err ? 1 : 0);
-      });
-    } else {
-      process.exit(err ? 1 : 0);
+function backupAll(callback) {
+  callback = callback || function () {};
+
+  var backupFunctions = [];
+  if( config.mongodb.constructor === Array ) {
+    for ( var mongoConfig of config.mongodb) {
+      backupFunctions.push(async.apply(backup.sync, mongoConfig, config.s3));
+      if(config.numOfArchives > 0) {
+        backupFunctions.push(async.apply(backup.clean, config.s3, mongoConfig.db, config.numOfArchives));
+      }
     }
+  } else {
+    backupFunctions.push(async.apply(backup.sync, config.mongodb, config.s3));
+    if(config.numOfArchives > 0) {
+      backupFunctions.push(async.apply(backup.clean, config.s3, config.mongodb.db, config.numOfArchives));
+    }
+  }
+
+  async.series(backupFunctions, callback);
+}
+
+function restoreAll(callback) {
+  callback = callback || function () {};
+
+  var restoreFunctions = [];
+  if( config.mongodb.constructor === Array ) {
+    for ( var mongoConfig of config.mongodb) {
+      restoreFunctions.push(async.apply(backup.restore, mongoConfig, config.s3));
+    }
+  } else {
+    restoreFunctions.push(async.apply(backup.restore, config.mongodb, config.s3));
+  }
+
+  async.series(restoreFunctions, callback);
+}
+
+if(options.now) {
+  backupAll(function(err) {
+    process.exit(err ? 1 : 0);
   });
 } else {
   // If the user overrides the default cron behavior
@@ -68,16 +99,16 @@ if(options.now) {
   }
 
   new cronJob(crontab, function(){
-    backup.sync(config.mongodb, config.s3, function(err) {
-      if(!err && config.numOfArchives > 0) {
-        backup.clean(config.s3, config.mongodb.db, config.numOfArchives);
+    backupAll(function(err) {
+      if(err) {
+        backup.log(err);
       }
     });
   }, null, true, timezone);
   backup.log('MongoDB S3 Backup Successfully scheduled (' + crontab + ')');
 
   if (options.restore) {
-    backup.restore(config.mongodb, config.s3, function(err) {
+    restoreAll(function(err) {
       if(err) {
         process.exit(1)
       } else {

@@ -178,6 +178,7 @@ function mongoRestore(options, backup, callback) {
   callback = callback || function() { };
 
   mongoOptions= [
+    '--drop',
     '-h', options.host + ':' + options.port,
     '-d', options.db,
     backup
@@ -376,7 +377,6 @@ function retrieveFromS3(options, directory, target, callback) {
       if(res.statusCode !== 200) {
         log(chunk, 'error');
       } else {
-        log(chunk);
         file.write(chunk);
       }
     });
