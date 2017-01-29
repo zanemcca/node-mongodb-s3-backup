@@ -270,8 +270,8 @@ function decompressDirectory(directory, input, output, callback) {
 
   tarOptions = [
     '-xzvf',
-    output,
-    input
+    input,
+    output
   ];
 
   log('Starting decompression of ' + input + ' into ' + output, 'info');
@@ -568,7 +568,7 @@ function restore(mongodbConfig, s3Config, callback) {
 
     async.series(tmpDirCleanupFns.concat([
       d.bind(async.apply(retrieveFromS3, s3Config, tmpDir, archiveName)), // this function sometimes throws EPIPE errors
-      async.apply(decompressDirectory, tmpDir, mongodbConfig.db, archiveName),
+      async.apply(decompressDirectory, tmpDir, archiveName, mongodbConfig.db),
       async.apply(mongoRestore, mongodbConfig, path.join(tmpDir, mongodbConfig.db))
     ]), function(err) {
       if(err) {
