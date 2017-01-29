@@ -393,6 +393,55 @@ function retrieveFromS3(options, directory, target, callback) {
 }
 
 /**
+ * deleteFromS3
+ *
+ * Deletes a file or directory from S3.
+ *
+ * @param options   s3 options [key, secret, bucket]
+ * @param directory directory containing to download contents to
+ * @param target    file or directory name of downloaded content
+ * @param callback  callback(err)
+ */
+function deleteFromS3(options, target, callback) {
+  var knox = require('knox')
+    , sourceFile = path.join(options.destination || '/', target)
+    , s3client
+    , headers = {};
+
+  callback = callback || function() { };
+
+  // Deleting destination because it's not an explicitly named knox option
+  delete options.destination;
+  s3client = knox.createClient(options);
+
+  log('Attemping to delete ' + target + ' from the ' + options.bucket + ' s3 bucket');
+
+  s3client.deleteFile(sourceFile, headers, function(err, res){
+    if(err) {
+      return callback(err);
+    }
+
+    res.setEncoding('utf8');
+
+    res.on('data', function(chunk){
+      if(res.statusCode !== 204) {
+        log(chunk, 'error');
+      } else {
+        log(chunk);
+      }
+    });
+
+    res.on('end', function(chunk) {
+      if (res.statusCode !== 204) {
+        return callback(new Error('Expected a 204 response from S3, got ' + res.statusCode));
+      }
+      log('Successfully deleted ' + target + ' from s3');
+      return callback();
+    });
+  });
+}
+
+/**
  * sync
  *
  * Performs a mongodump on a specified database, gzips the data,
@@ -439,6 +488,55 @@ function sync(mongodbConfig, s3Config, callback) {
       });
   });
 
+}
+
+
+/**
+ * cleanupOldArchives
+ *
+ * Removes old archives 
+ *
+ * @param options S3 Config options 
+ * @param databaseName The name of the database
+ * @param total The total number of archives that should be kept 
+ */
+function cleanupOldArchives(options, databaseName, total,  callback) {
+  var s3Client = knox.createClient(options)
+    , newest;
+
+  s3Client.list({}, function(err, data) {
+    if(err) {
+      log(err, 'error');
+    } else {
+      data.Contents.sort(function(a,b) {
+        return b.LastModified - a.LastModified;
+      })
+      var list = data.Contents.filter(function(d) {
+        return d.Key.indexOf(databaseName) != -1;
+      });
+
+      if (list.length > total) {
+        var deleteList = list.slice(total)
+        var deleteCmds = [];
+
+        for(var item of deleteList) {
+          deleteCmds.push(async.apply(deleteFromS3, options, item.Key))
+        }
+
+        async.series(deleteCmds, function(err) {
+          if(err) {
+            log(err, 'error');
+          } else {
+            log('Successfully cleaned up old archives');
+          }
+          callback(err);
+        });
+      } else {
+        log('No Archives need to be removed')
+        callback();
+      }
+    }
+  });
 }
 
 /**
@@ -494,4 +592,4 @@ function restore(mongodbConfig, s3Config, callback) {
   });
 }
 
-module.exports = { sync: sync, restore: restore, log: log };
+module.exports = { clean: cleanupOldArchives, sync: sync, restore: restore, log: log };

@@ -35,7 +35,13 @@ config = require(configPath);
 
 if(options.now) {
   backup.sync(config.mongodb, config.s3, function(err) {
-    process.exit(err ? 1 : 0);
+    if(config.numOfArchives > 0) {
+      backup.clean(config.s3, config.mongodb.db, config.numOfArchives, function(err) {
+        process.exit(err ? 1 : 0);
+      });
+    } else {
+      process.exit(err ? 1 : 0);
+    }
   });
 } else {
   // If the user overrides the default cron behavior
@@ -62,7 +68,11 @@ if(options.now) {
   }
 
   new cronJob(crontab, function(){
-    backup.sync(config.mongodb, config.s3);
+    backup.sync(config.mongodb, config.s3, function(err) {
+      if(!err && config.numOfArchives > 0) {
+        backup.clean(config.s3, config.mongodb.db, config.numOfArchives);
+      }
+    });
   }, null, true, timezone);
   backup.log('MongoDB S3 Backup Successfully scheduled (' + crontab + ')');
 
