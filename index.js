@@ -554,6 +554,10 @@ function restore(mongodbConfig, s3Config, callback) {
     , backupDir = path.join(tmpDir, mongodbConfig.db)
     , tmpDirCleanupFns;
 
+  if(!fs.existsSync(tmpDir)){
+    fs.mkdirSync(tmpDir);
+  }
+
   callback = callback || function() { };
 
   getLastArchiveName(s3Config, mongodbConfig.db, function(err, archiveName) {
