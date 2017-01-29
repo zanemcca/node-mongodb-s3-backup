@@ -72,7 +72,7 @@ function getLastArchiveName(options, databaseName, callback) {
       log(err, 'error');
     } else {
       for(var d of data.Contents) {
-        if( d.Key.indexOf(databaseName) != -1) {
+        if( d.Key.indexOf(databaseName + '_') != -1) {
           newest = newest || d;
           if( d.LastModified > newest.LastModified) {
             newest = d;
@@ -512,7 +512,7 @@ function cleanupOldArchives(options, databaseName, total,  callback) {
         return b.LastModified - a.LastModified;
       })
       var list = data.Contents.filter(function(d) {
-        return d.Key.indexOf(databaseName) != -1;
+        return d.Key.indexOf(databaseName + '_') != -1;
       });
 
       if (list.length > total) {
