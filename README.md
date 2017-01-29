@@ -15,13 +15,20 @@ There is a sample configuration file supplied in the package (`config.sample.jso
 The file should have the following format:
 
     {
-      "mongodb": {
+      "mongodb": [{
         "host": "localhost",
         "port": 27017,
         "username": false,
         "password": false,
         "db": "database_to_backup"
       },
+      {
+        "host": "localhost",
+        "port": 27017,
+        "username": false,
+        "password": false,
+        "db": "other_database_to_backup"
+      }],
       "s3": {
         "key": "your_s3_key",
         "secret": "your_s3_secret",
@@ -30,6 +37,7 @@ The file should have the following format:
         "encrypt": true,
         "region": "s3_region_to_use"
       },
+      "numOfBackups": 10,
       "cron": {
         "time": "11:59",
       }
@@ -70,3 +78,7 @@ To start a long-running process with scheduled cron job:
 To execute a backup immediately and exit:
 
     mongodb_s3_backup -n <path to config file>
+
+To execute a restore immediately and then start a long-running process with scheduled cron jobs:
+
+    mongodb_s3_backup -r <path to config file>

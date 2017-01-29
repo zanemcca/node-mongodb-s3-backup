@@ -41,14 +41,14 @@ function backupAll(callback) {
   if( config.mongodb.constructor === Array ) {
     for ( var mongoConfig of config.mongodb) {
       backupFunctions.push(async.apply(backup.sync, mongoConfig, config.s3));
-      if(config.numOfArchives > 0) {
-        backupFunctions.push(async.apply(backup.clean, config.s3, mongoConfig.db, config.numOfArchives));
+      if(config.numOfBackups > 0) {
+        backupFunctions.push(async.apply(backup.clean, config.s3, mongoConfig.db, config.numOfBackups));
       }
     }
   } else {
     backupFunctions.push(async.apply(backup.sync, config.mongodb, config.s3));
-    if(config.numOfArchives > 0) {
-      backupFunctions.push(async.apply(backup.clean, config.s3, config.mongodb.db, config.numOfArchives));
+    if(config.numOfBackups > 0) {
+      backupFunctions.push(async.apply(backup.clean, config.s3, config.mongodb.db, config.numOfBackups));
     }
   }
 
